@@ -19,57 +19,29 @@ export default function ProductScroll() {
 
   // Preload images state
   const [images, setImages] = useState<HTMLImageElement[]>([]);
-  const [loadedCount, setLoadedCount] = useState(0);
-  const [isFirstFrameLoaded, setIsFirstFrameLoaded] = useState(false);
 
   useEffect(() => {
-    const loadedImages: HTMLImageElement[] = new Array(numFrames);
-    let currentLoaded = 0;
+    // Preload all 160 images to ensure smooth playback
+    const loadedImages: HTMLImageElement[] = [];
+    let loadedCount = 0;
 
-    // Helper to load a single image
-    const loadImage = (index: number): Promise<void> => {
-      return new Promise((resolve) => {
-        const img = new Image();
-        const paddedIndex = String(index).padStart(3, "0");
-        img.src = `/media/frames/frame_${paddedIndex}.png`;
-        img.onload = () => {
-          loadedImages[index - 1] = img;
-          currentLoaded++;
-          setLoadedCount(currentLoaded);
-          if (index === 1) setIsFirstFrameLoaded(true);
-          resolve();
-        };
-        img.onerror = () => {
-          // If a frame fails to load, just skip it to prevent freezing
-          currentLoaded++;
-          setLoadedCount(currentLoaded);
-          resolve(); 
-        };
-      });
-    };
-
-    // Load strategy: Load Frame 1 immediately so the user sees something.
-    // Then load the rest of the frames asynchronously in batches to avoid choking the browser network.
-    const loadAllImages = async () => {
-      await loadImage(1); // Block until first frame is ready
-      
-      // Load the rest in chunks of 10 to not overwhelm the network pool
-      for (let i = 2; i <= numFrames; i += 10) {
-        const promises = [];
-        for (let j = i; j < i + 10 && j <= numFrames; j++) {
-          promises.push(loadImage(j));
-        }
-        await Promise.all(promises);
-      }
-      setImages([...loadedImages]);
-    };
-
-    loadAllImages();
+    for (let i = 1; i <= numFrames; i++) {
+      const img = new Image();
+      // Format the frame number with leading zeros, e.g., 'frame_001.png'
+      const paddedIndex = String(i).padStart(3, "0");
+      img.src = `/media/frames/frame_${paddedIndex}.png`;
+      img.onload = () => {
+        loadedCount++;
+        // If you wanted to show a loading bar, you could track loadedCount here
+      };
+      loadedImages.push(img);
+    }
+    setImages(loadedImages);
   }, []);
 
   // Update canvas when the frame index changes
   useEffect(() => {
-    if (!canvasRef.current || loadedCount === 0) return;
+    if (!canvasRef.current || images.length !== numFrames) return;
 
     const ctx = canvasRef.current.getContext("2d");
     if (!ctx) return;
@@ -79,8 +51,8 @@ export default function ProductScroll() {
       // Find the integer index of the frame (round down to keep 1-160 bound correct)
       const frameIndex = Math.min(Math.max(Math.floor(latest), 1), numFrames);
 
-      // We might be scrolling during download, so use what we have in state or fallback to frame 1
-      const img = images[frameIndex - 1] || images[0];
+      // Arrays are 0-indexed, so frame 1 is at index 0
+      const img = images[frameIndex - 1];
 
       if (img && img.complete) {
         // Clear previous frame
@@ -142,16 +114,9 @@ export default function ProductScroll() {
             className="w-full h-full object-contain"
           />
 
-          {loadedCount < numFrames && (
-            <div className={`absolute inset-0 flex flex-col items-center justify-center text-white bg-black/${isFirstFrameLoaded ? '40' : '90'} backdrop-blur-sm z-20 transition-all duration-500`}>
-              <div className="text-xl font-bold mb-4">{Math.round((loadedCount / numFrames) * 100)}%</div>
-              <div className="w-64 h-2 bg-gray-800 rounded-full overflow-hidden">
-                <div 
-                  className="h-full bg-white transition-all duration-300 ease-out" 
-                  style={{ width: `${(loadedCount / numFrames) * 100}%` }}
-                ></div>
-              </div>
-              <div className="mt-4 text-sm text-gray-400">Chargement de la séquence 3D...</div>
+          {images.length < numFrames && (
+            <div className="absolute inset-0 flex items-center justify-center text-white bg-black/80 z-20">
+              Chargement de l'expérience 3D...
             </div>
           )}
         </div>
