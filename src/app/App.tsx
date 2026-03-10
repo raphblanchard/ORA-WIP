@@ -15,7 +15,7 @@ import VrHudAframe from "./components/VrHudAframe";
 const SERVICE = "6e400001-b5a3-f393-e0a9-e50e24dcca9e";
 const TX_CHAR = "6e400003-b5a3-f393-e0a9-e50e24dcca9e";
 
-type Page = "home" | "infos" | "infos2" | "ascension" | "test";
+type Page = "home" | "infos" | "ascension" | "test";
 
 const haversineMeters = (lat1: number, lon1: number, lat2: number, lon2: number) => {
   const toRad = (v: number) => (v * Math.PI) / 180;
@@ -68,7 +68,6 @@ export default function App() {
   const holdIntervalRef = useRef<number | null>(null);
   const suppressNextClickRef = useRef(false);
   const isAscensionPage = page === "ascension";
-  const isDescente2Page = page === "infos2";
   const isTestPage = page === "test";
   const isWeatherPage = isAscensionPage || isTestPage;
   const activeSession = isTestPage ? testSessionActive : sessionActive;
@@ -519,7 +518,7 @@ export default function App() {
   return (
     <div className="relative w-full min-h-screen overflow-hidden bg-gradient-to-br from-sky-300 via-blue-200 to-blue-100">
       <div className="max-w-[1920px] mx-auto p-4">
-        <div className="flex gap-2 mb-3 flex-wrap">
+        <div className="flex gap-2 mb-3">
           <button
             onClick={() => setPage("home")}
             className={`px-4 py-2 rounded-md border ${page === "home" ? "bg-slate-900 text-white" : "bg-white"}`}
@@ -531,12 +530,6 @@ export default function App() {
             className={`px-4 py-2 rounded-md border ${page === "infos" ? "bg-slate-900 text-white" : "bg-white"}`}
           >
             Descente
-          </button>
-          <button
-            onClick={() => setPage("infos2")}
-            className={`px-4 py-2 rounded-md border ${page === "infos2" ? "bg-slate-900 text-white" : "bg-white"}`}
-          >
-            Desccente 2
           </button>
           <button
             onClick={() => setPage("ascension")}
@@ -568,7 +561,7 @@ export default function App() {
           </div>
         )}
 
-        {(page === "infos" || page === "infos2" || page === "ascension" || page === "test") && (
+        {(page === "infos" || page === "ascension" || page === "test") && (
           <div className="relative w-full h-[calc(100vh-88px)] max-w-[1920px]">
             {vrMode !== "off" && activeSession ? (
               vrMode === "aframe" ? (
@@ -579,9 +572,6 @@ export default function App() {
                   tempAmb={tempAmbDisplay}
                   tempObj={tempObjDisplay}
                   videoSrc={hudVideoSrc}
-                  batteryText={batteryDisplay}
-                  mapSrc={hudMapSrc}
-                  minimalDescenteHud={isDescente2Page}
                 />
               ) : (
                 <VrHud
@@ -633,35 +623,24 @@ export default function App() {
                 </div>
                 {!activeSession && (
                   <div className="absolute inset-0 z-40 flex items-center justify-center gap-6">
-                    {isDescente2Page ? (
-                      <button
-                        onClick={startVrAframeSession}
-                        className="px-8 py-4 rounded-xl border-2 border-emerald-400/90 bg-emerald-900/80 text-white text-2xl font-extrabold backdrop-blur-sm shadow-[0_0_15px_rgba(52,211,153,0.5)]"
-                      >
-                        Start VR
-                      </button>
-                    ) : (
-                      <>
-                        <button
-                          onClick={startDisplaySession}
-                          className="px-8 py-4 rounded-xl border-2 border-white/70 bg-[#5F93AB]/70 text-white text-2xl font-extrabold backdrop-blur-sm"
-                        >
-                          Start 2D
-                        </button>
-                        <button
-                          onClick={startVrSession}
-                          className="px-8 py-4 rounded-xl border-2 border-cyan-400/90 bg-cyan-900/80 text-white text-2xl font-extrabold backdrop-blur-sm shadow-[0_0_15px_rgba(34,211,238,0.5)]"
-                        >
-                          Start VR 360
-                        </button>
-                        <button
-                          onClick={startVrAframeSession}
-                          className="px-8 py-4 rounded-xl border-2 border-emerald-400/90 bg-emerald-900/80 text-white text-2xl font-extrabold backdrop-blur-sm shadow-[0_0_15px_rgba(52,211,153,0.5)]"
-                        >
-                          Start VR A-Frame
-                        </button>
-                      </>
-                    )}
+                    <button
+                      onClick={startDisplaySession}
+                      className="px-8 py-4 rounded-xl border-2 border-white/70 bg-[#5F93AB]/70 text-white text-2xl font-extrabold backdrop-blur-sm"
+                    >
+                      Start 2D
+                    </button>
+                    <button
+                      onClick={startVrSession}
+                      className="px-8 py-4 rounded-xl border-2 border-cyan-400/90 bg-cyan-900/80 text-white text-2xl font-extrabold backdrop-blur-sm shadow-[0_0_15px_rgba(34,211,238,0.5)]"
+                    >
+                      Start VR 360
+                    </button>
+                    <button
+                      onClick={startVrAframeSession}
+                      className="px-8 py-4 rounded-xl border-2 border-emerald-400/90 bg-emerald-900/80 text-white text-2xl font-extrabold backdrop-blur-sm shadow-[0_0_15px_rgba(52,211,153,0.5)]"
+                    >
+                      Start VR A-Frame
+                    </button>
                   </div>
                 )}
                 {activeSession && (
