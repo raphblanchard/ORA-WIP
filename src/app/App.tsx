@@ -12,11 +12,12 @@ import { Component, Vector, Component1, Component2, Component3, ComponentWeather
 import VrHud from "./components/VrHud";
 import VrHudAframe from "./components/VrHudAframe";
 import VrHudAframeDescente2 from "./components/VrHudAframeDescente2";
+import ProductScroll from "./components/ProductScroll";
 
 const SERVICE = "6e400001-b5a3-f393-e0a9-e50e24dcca9e";
 const TX_CHAR = "6e400003-b5a3-f393-e0a9-e50e24dcca9e";
 
-type Page = "home" | "infos" | "descente2" | "ascension" | "test";
+type Page = "landing" | "home" | "infos" | "descente2" | "ascension" | "test";
 
 const haversineMeters = (lat1: number, lon1: number, lat2: number, lon2: number) => {
   const toRad = (v: number) => (v * Math.PI) / 180;
@@ -31,7 +32,7 @@ const haversineMeters = (lat1: number, lon1: number, lat2: number, lon2: number)
 };
 
 export default function App() {
-  const [page, setPage] = useState<Page>("infos");
+  const [page, setPage] = useState<Page>("landing");
   const hudVideoSrc = page === "descente2" ? "/media/hud-background 2.mp4" : "/media/hud-background.mp4";
   const [btStatus, setBtStatus] = useState("BT: non connecte");
   const [sessionActive, setSessionActive] = useState(false);
@@ -522,6 +523,12 @@ export default function App() {
       <div className="max-w-[1920px] mx-auto p-4">
         <div className="flex gap-2 mb-3">
           <button
+            onClick={() => setPage("landing")}
+            className={`px-4 py-2 rounded-md border ${page === "landing" ? "bg-slate-900 text-white" : "bg-white"}`}
+          >
+            Casque 3D (Visite)
+          </button>
+          <button
             onClick={() => setPage("home")}
             className={`px-4 py-2 rounded-md border ${page === "home" ? "bg-slate-900 text-white" : "bg-white"}`}
           >
@@ -566,6 +573,12 @@ export default function App() {
             </div>
             <div className="text-sm mb-1">{btStatus}</div>
             <div className="text-sm">{homeStatus}</div>
+          </div>
+        )}
+
+        {page === "landing" && (
+          <div className="w-full h-[calc(100vh-88px)] rounded-xl overflow-hidden border border-black pb-24">
+            <ProductScroll />
           </div>
         )}
 
