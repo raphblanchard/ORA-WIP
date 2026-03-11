@@ -5,8 +5,11 @@ import React, { useEffect, useRef, useState } from "react";
    PROPS
 ───────────────────────────────────────────── */
 interface VrHudAframeProps {
+    alertType: "breathing" | "return";
     altitude: string;
     bpm: string;
+    isFirstReference: boolean;
+    onToggleReference: () => void;
     timeText: string;
     tempAmb: string;
     tempObj: string;
@@ -19,18 +22,27 @@ interface VrHudAframeProps {
    attachées à la caméra → visible en mode immersif VR
 ───────────────────────────────────────────── */
 export default function VrHudAframe({
+    alertType,
     altitude,
     bpm,
+    isFirstReference,
+    onToggleReference,
     timeText,
     tempAmb,
     tempObj,
     videoSrc,
 }: VrHudAframeProps) {
     const videoRef = useRef<HTMLVideoElement>(null);
+    const sceneRef = useRef<any>(null);
     const [isPlaying, setIsPlaying] = useState(false);
+    const [activeAlert, setActiveAlert] = useState<"none" | "breathing" | "return">("none");
+    const [breathPhase, setBreathPhase] = useState<"inhale" | "exhale">("inhale");
+    const [logoSrc, setLogoSrc] = useState("/media/hud/png-elements/hq/Logo vert.png");
 
     /* ── couleur HUD ── */
     const COL = "#6AD2CA";
+    const breathInstruction = breathPhase === "inhale" ? "Inspirez lentement" : "Expirez";
+    const breathScale = breathPhase === "inhale" ? "1.2 1.2 1" : "0.78 0.78 1";
 
     /* ── lecture vidéo ── */
     useEffect(() => {
@@ -128,8 +140,8 @@ export default function VrHudAframe({
             if (logo) {
                 logo.setAttribute("animation", {
                     property: "scale",
-                    from: "0.28 0.28 0.28",
-                    to: "0.32 0.32 0.32",
+                    from: "0.42 0.42 0.42",
+                    to: "0.47 0.47 0.47",
                     dur: 2000,
                     dir: "alternate",
                     loop: true,
@@ -139,6 +151,81 @@ export default function VrHudAframe({
         }, 400);
         return () => clearTimeout(timer);
     }, []);
+
+    useEffect(() => {
+        const sceneEl = sceneRef.current;
+        if (!sceneEl) return;
+
+        const enterVr = () => {
+            if (typeof sceneEl.enterVR === "function") {
+                sceneEl.enterVR().catch?.(() => { });
+            }
+        };
+
+        if (sceneEl.hasLoaded) {
+            enterVr();
+            return;
+        }
+
+        sceneEl.addEventListener("loaded", enterVr, { once: true });
+        return () => {
+            sceneEl.removeEventListener("loaded", enterVr);
+        };
+    }, []);
+
+    useEffect(() => {
+        setActiveAlert("none");
+        setBreathPhase("inhale");
+        setLogoSrc("/media/hud/png-elements/hq/Logo vert.png");
+        let breathingTimer: number | null = null;
+
+        const triggerTimer = window.setTimeout(() => {
+            if (alertType === "breathing") {
+                setLogoSrc("/media/hud/png-elements/hq/Logo jaune.png");
+                setActiveAlert("breathing");
+                setBreathPhase("inhale");
+
+                let step = 0;
+                const totalSteps = 10;
+                breathingTimer = window.setInterval(() => {
+                    step += 1;
+                    if (step >= totalSteps) {
+                        if (breathingTimer !== null) {
+                            window.clearInterval(breathingTimer);
+                        }
+                        setActiveAlert("none");
+                        return;
+                    }
+                    setBreathPhase(step % 2 === 0 ? "inhale" : "exhale");
+                }, 2200);
+            }
+            else {
+                setLogoSrc("/media/hud/png-elements/hq/Logo rouge.png");
+                setActiveAlert("return");
+            }
+        }, 3000);
+
+        return () => {
+            window.clearTimeout(triggerTimer);
+            if (breathingTimer !== null) {
+                window.clearInterval(breathingTimer);
+            }
+        };
+    }, [alertType]);
+
+    useEffect(() => {
+        const buttonEl = document.querySelector("#af-nav-button");
+        if (!buttonEl) return;
+
+        const handleClick = () => {
+            onToggleReference();
+        };
+
+        buttonEl.addEventListener("click", handleClick);
+        return () => {
+            buttonEl.removeEventListener("click", handleClick);
+        };
+    }, [onToggleReference]);
 
     return (
         <div
@@ -191,6 +278,7 @@ export default function VrHudAframe({
           SCÈNE A-FRAME — Tout le HUD est en entités 3D
       ══════════════════════════════════════════════ */}
             <a-scene
+                ref={sceneRef}
                 vr-mode-ui="enabled: true"
                 loading-screen="enabled: false"
                 device-orientation-permission-ui="enabled: false"
@@ -227,6 +315,8 @@ export default function VrHudAframe({
                     id="af-camera"
                     position="0 1.6 0"
                     look-controls="pointerLockEnabled: false"
+                    raycaster="objects: .af-clickable"
+                    cursor="rayOrigin: mouse"
                 >
                     {/* 
             HUD CONTENEUR
@@ -237,12 +327,12 @@ export default function VrHudAframe({
                         {/* ══════ LOGO CENTRAL ══════ */}
                         <a-image
                             id="af-logo"
-                            src="#af-img-logo"
+                            src={logoSrc}
                             material="shader: flat; transparent: true"
                             position="0 0.45 0"
-                            width="0.3"
-                            height="0.3"
-                            scale="0.3 0.3 0.3"
+                            width="0.44"
+                            height="0.44"
+                            scale="0.44 0.44 0.44"
                         />
 
                         {/* ══════ LIGNE GAUCHE ══════ */}
@@ -397,6 +487,81 @@ export default function VrHudAframe({
                                 baseline="center"
                             />
                         </a-entity>
+
+                        <a-entity
+                            id="af-nav-button"
+                            class="af-clickable"
+                            geometry="primitive: plane; width: 0.24; height: 0.24"
+                            material="color: #10242c; opacity: 0.38; shader: flat"
+                            position={isFirstReference ? "1.8 -1.0 0.02" : "-1.8 -1.0 0.02"}
+                        >
+                            <a-text
+                                value={isFirstReference ? ">" : "<"}
+                                color="#d9f3f0"
+                                align="center"
+                                baseline="center"
+                                width="1.2"
+                                position="0 0 0.01"
+                            />
+                        </a-entity>
+
+                        {activeAlert === "breathing" && (
+                            <a-entity id="af-breathing-alert" position="0 -0.05 0.03">
+                                <a-ring
+                                    radius-inner="0.16"
+                                    radius-outer="0.21"
+                                    material="shader: flat; color: #F3D35B; opacity: 0.9"
+                                    scale={breathScale}
+                                    animation={`property: scale; to: ${breathScale}; dur: 1800; easing: easeInOutSine`}
+                                />
+                                <a-circle
+                                    radius="0.27"
+                                    material="shader: flat; color: #F3D35B; opacity: 0.08"
+                                    scale={breathScale}
+                                    animation={`property: scale; to: ${breathScale}; dur: 1800; easing: easeInOutSine`}
+                                />
+                                <a-text
+                                    value="Alerte respiration"
+                                    color="#F9E7A5"
+                                    align="center"
+                                    width="2.2"
+                                    position="0 -0.42 0.01"
+                                />
+                                <a-text
+                                    value={breathInstruction}
+                                    color="#FFF7DA"
+                                    align="center"
+                                    width="2.6"
+                                    position="0 -0.53 0.01"
+                                />
+                            </a-entity>
+                        )}
+
+                        {activeAlert === "return" && (
+                            <a-entity id="af-return-alert" position="0 -0.1 0.03">
+                                <a-text
+                                    value="Alerte retour"
+                                    color="#FF8A84"
+                                    align="center"
+                                    width="2.3"
+                                    position="0 0.1 0.02"
+                                />
+                                <a-text
+                                    value="Vous etes trop loin du domicile."
+                                    color="#FFF1F1"
+                                    align="center"
+                                    width="2.9"
+                                    position="0 -0.02 0.02"
+                                />
+                                <a-text
+                                    value="Rentrez."
+                                    color="#FFF1F1"
+                                    align="center"
+                                    width="2.4"
+                                    position="0 -0.13 0.02"
+                                />
+                            </a-entity>
+                        )}
 
                     </a-entity>
                 </a-camera>
