@@ -327,6 +327,14 @@ export default function VrHudAframe({
                 {/* ── Vidéo 360° ── */}
                 <a-videosphere src="#bg-video-af" rotation="0 -90 0" />
 
+                <a-entity
+                    id="af-right-controller"
+                    laser-controls="hand: right"
+                    raycaster="objects: .af-clickable; origin: 0 0 -0.08"
+                    cursor="rayOrigin: entity"
+                    line="color: #6AD2CA; opacity: 0.9"
+                />
+
                 {/* ── Caméra + HUD enfant ── */}
                 <a-camera
                     id="af-camera"
@@ -335,14 +343,6 @@ export default function VrHudAframe({
                     raycaster={!isVrMode ? "objects: .af-clickable" : undefined}
                     cursor={!isVrMode ? "rayOrigin: mouse" : undefined}
                 >
-                    <a-entity
-                        id="af-right-controller"
-                        laser-controls="hand: right"
-                        raycaster="objects: .af-clickable"
-                        cursor="rayOrigin: entity"
-                        line="color: #6AD2CA; opacity: 0.9"
-                    />
-
                     {/* 
             HUD CONTENEUR
             Position: centré horizontalement, légèrement au-dessus du centre, 2.5m devant 
