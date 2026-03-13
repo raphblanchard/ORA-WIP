@@ -365,16 +365,15 @@ export default function VrHudAframe({
                 {/* ── Vidéo 360° ── */}
                 <a-videosphere src="#bg-video-af" rotation="0 -90 0" />
 
-                <a-entity
-                    id="af-right-controller"
-                    laser-controls="hand: right"
-                    raycaster="objects: .af-clickable; origin: 0 0 -0.08"
-                    cursor="rayOrigin: entity"
-                    line="color: #6AD2CA; opacity: 0.9"
-                />
-
                 {/* ── Caméra + HUD enfant ── */}
                 <a-entity id="af-camera-rig" rotation={`0 ${INITIAL_CAMERA_YAW} 0`}>
+                    <a-entity
+                        id="af-right-controller"
+                        laser-controls="hand: right"
+                        raycaster="objects: .af-clickable; origin: 0 0 -0.08"
+                        cursor="rayOrigin: entity"
+                        line="color: #6AD2CA; opacity: 0.9"
+                    />
                     <a-camera
                         id="af-camera"
                         position="0 1.6 0"
