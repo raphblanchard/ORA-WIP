@@ -11,9 +11,11 @@ type ReferencePreset = {
   batteryText: string;
   bpm: string;
   corpText: string;
+  durationText: string;
   mapCenter: { lat: number; lon: number };
   maxSpeed: string;
   speed: string;
+  timeText: string;
   title: string;
   videoSrc: string;
   weatherMode: boolean;
@@ -27,26 +29,30 @@ const PRESETS: Record<Page, ReferencePreset> = {
     ambText: "-6.5",
     avgSpeed: "48",
     batteryText: "82",
-    bpm: "128",
+    bpm: "176",
     corpText: "33.1",
+    durationText: "7H20",
     mapCenter: { lat: 45.8789, lon: 6.8874 },
     maxSpeed: "71",
     speed: "56",
+    timeText: "11:25",
     videoSrc: "/media/old-hud-background.mp4",
     weatherMode: false,
   },
   ascension: {
     alertType: "return",
     title: "Ascension",
-    altitude: "1870",
-    ambText: "-11.0",
-    avgSpeed: "0",
-    batteryText: "82",
-    bpm: "142",
+    altitude: "2410",
+    ambText: "-9.0",
+    avgSpeed: "12",
+    batteryText: "61",
+    bpm: "118",
     corpText: "31.8",
+    durationText: "0H35",
     mapCenter: { lat: 45.832, lon: 6.865 },
-    maxSpeed: "0",
-    speed: "0",
+    maxSpeed: "22",
+    speed: "14",
+    timeText: "18:10",
     videoSrc: "/media/old-hud-background.mp4",
     weatherMode: true,
   },
@@ -54,23 +60,9 @@ const PRESETS: Record<Page, ReferencePreset> = {
 
 export default function App() {
   const [page, setPage] = useState<Page>("infos");
-  const [timeText, setTimeText] = useState("--:--");
 
   const preset = PRESETS[page];
   const isFirstReference = page === "infos";
-
-  useEffect(() => {
-    const updateTime = () => {
-      const now = new Date();
-      const hh = String(now.getHours()).padStart(2, "0");
-      const mm = String(now.getMinutes()).padStart(2, "0");
-      setTimeText(`${hh}:${mm}`);
-    };
-
-    updateTime();
-    const timer = window.setInterval(updateTime, 1000);
-    return () => window.clearInterval(timer);
-  }, []);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -99,9 +91,10 @@ export default function App() {
             alertType={preset.alertType}
             altitude={preset.altitude}
             bpm={preset.bpm}
+            durationText={preset.durationText}
             isFirstReference={isFirstReference}
             onToggleReference={toggleReference}
-            timeText={timeText}
+            timeText={preset.timeText}
             tempAmb={preset.ambText}
             tempObj={preset.corpText}
             videoSrc={preset.videoSrc}

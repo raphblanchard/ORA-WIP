@@ -8,6 +8,7 @@ interface VrHudAframeProps {
     alertType: "breathing" | "return";
     altitude: string;
     bpm: string;
+    durationText: string;
     isFirstReference: boolean;
     onToggleReference: () => void;
     timeText: string;
@@ -25,6 +26,7 @@ export default function VrHudAframe({
     alertType,
     altitude,
     bpm,
+    durationText,
     isFirstReference,
     onToggleReference,
     timeText,
@@ -230,7 +232,7 @@ export default function VrHudAframe({
                 setLogoSrc("/media/hud/png-elements/hq/Logo rouge.png");
                 setActiveAlert("return");
             }
-        }, 3000);
+        }, 10000);
 
         return () => {
             window.clearTimeout(triggerTimer);
@@ -381,11 +383,11 @@ export default function VrHudAframe({
                         raycaster={!isVrMode ? "objects: .af-clickable" : undefined}
                         cursor={!isVrMode ? "rayOrigin: mouse" : undefined}
                     >
-                    {/* 
+                    {/*
             HUD CONTENEUR
-            Position: centré horizontalement, légèrement au-dessus du centre, 2.5m devant 
+            Position: centré horizontalement, légèrement au-dessus du centre, 3.4m devant
           */}
-                        <a-entity id="af-hud" position="0 0.15 -2.5">
+                        <a-entity id="af-hud" position="0 0.15 -3.4">
 
                         {/* ══════ LOGO CENTRAL ══════ */}
                         <a-image
@@ -474,7 +476,7 @@ export default function VrHudAframe({
                                 height="0.12"
                             />
                             <a-text
-                                value="1H32"
+                                value={durationText}
                                 position="-0.05 0 0"
                                 color={COL}
                                 font="kelsonsans"
