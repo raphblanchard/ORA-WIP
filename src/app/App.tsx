@@ -32,7 +32,7 @@ const PRESETS: Record<Page, ReferencePreset> = {
     mapCenter: { lat: 45.8789, lon: 6.8874 },
     maxSpeed: "71",
     speed: "56",
-    videoSrc: "/media/hud-background.mp4",
+    videoSrc: "/media/old-hud-background.mp4",
     weatherMode: false,
   },
   ascension: {
@@ -47,7 +47,7 @@ const PRESETS: Record<Page, ReferencePreset> = {
     mapCenter: { lat: 45.832, lon: 6.865 },
     maxSpeed: "0",
     speed: "0",
-    videoSrc: "/media/hud-background.mp4",
+    videoSrc: "/media/old-hud-background.mp4",
     weatherMode: true,
   },
 };
