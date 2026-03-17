@@ -1,80 +1,61 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 
 interface VideoPreloaderProps {
     videoUrl: string;
-    onStart: (blobUrl: string) => void;
+    onStart: (url: string) => void;
 }
 
 const COL = "#6AD2CA";
 
 export default function VideoPreloader({ videoUrl, onStart }: VideoPreloaderProps) {
     const [progress, setProgress] = useState(0);
-    const [blobUrl, setBlobUrl] = useState<string | null>(null);
+    const [ready, setReady] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    // Keep a ref so the cleanup doesn't revoke a URL that was already handed off
-    const handedOff = useRef(false);
-    const objectUrlRef = useRef<string | null>(null);
 
     useEffect(() => {
-        let cancelled = false;
+        // On utilise un <video> caché — pas de restriction CORS contrairement à fetch()
+        const video = document.createElement("video");
+        video.preload = "auto";
+        video.muted = true;
+        video.src = videoUrl;
 
-        async function preload() {
-            try {
-                const response = await fetch(videoUrl);
-                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        let rafId: number;
 
-                const contentLength = response.headers.get("Content-Length");
-                const total = contentLength ? parseInt(contentLength, 10) : 0;
-
-                const reader = response.body!.getReader();
-                const chunks: Uint8Array[] = [];
-                let received = 0;
-
-                while (true) {
-                    const { done, value } = await reader.read();
-                    if (done) break;
-                    if (cancelled) {
-                        reader.cancel();
-                        return;
-                    }
-                    chunks.push(value);
-                    received += value.length;
-                    if (total > 0) {
-                        // Cap at 99 until Blob is fully assembled
-                        setProgress(Math.min(99, Math.round((received / total) * 100)));
-                    }
-                }
-
-                if (cancelled) return;
-
-                const blob = new Blob(chunks, { type: "video/mp4" });
-                const url = URL.createObjectURL(blob);
-                objectUrlRef.current = url;
-                setProgress(100);
-                setBlobUrl(url);
-            } catch (err) {
-                if (!cancelled) {
-                    setError(err instanceof Error ? err.message : "Erreur inconnue");
-                }
+        // Mise à jour de la progression via video.buffered (polling rAF)
+        function tick() {
+            if (video.duration > 0 && video.buffered.length > 0) {
+                const bufferedEnd = video.buffered.end(video.buffered.length - 1);
+                const pct = Math.round((bufferedEnd / video.duration) * 100);
+                setProgress(Math.min(99, pct));
             }
+            rafId = requestAnimationFrame(tick);
         }
 
-        preload();
+        function onCanPlayThrough() {
+            cancelAnimationFrame(rafId);
+            setProgress(100);
+            setReady(true);
+        }
+
+        function onError() {
+            cancelAnimationFrame(rafId);
+            const err = video.error;
+            setError(err ? `Code ${err.code} — ${err.message}` : "Erreur inconnue");
+        }
+
+        video.addEventListener("canplaythrough", onCanPlayThrough, { once: true });
+        video.addEventListener("error", onError, { once: true });
+
+        rafId = requestAnimationFrame(tick);
+        video.load();
 
         return () => {
-            cancelled = true;
-            // Revoke only if we never handed the URL off to the parent
-            if (!handedOff.current && objectUrlRef.current) {
-                URL.revokeObjectURL(objectUrlRef.current);
-            }
+            cancelAnimationFrame(rafId);
+            video.removeEventListener("canplaythrough", onCanPlayThrough);
+            video.removeEventListener("error", onError);
+            video.src = "";
         };
     }, [videoUrl]);
-
-    function handleStart() {
-        if (!blobUrl) return;
-        handedOff.current = true;
-        onStart(blobUrl);
-    }
 
     return (
         <div
@@ -156,7 +137,7 @@ export default function VideoPreloader({ videoUrl, onStart }: VideoPreloaderProp
                                 width: `${progress}%`,
                                 background: COL,
                                 borderRadius: 2,
-                                transition: "width 0.15s linear",
+                                transition: "width 0.3s linear",
                                 boxShadow: "0 0 6px rgba(106,210,202,0.5)",
                             }}
                         />
@@ -176,9 +157,9 @@ export default function VideoPreloader({ videoUrl, onStart }: VideoPreloaderProp
                     </div>
 
                     {/* Bouton — visible uniquement quand le chargement est terminé */}
-                    {progress === 100 && blobUrl && (
+                    {ready && (
                         <button
-                            onClick={handleStart}
+                            onClick={() => onStart(videoUrl)}
                             style={{
                                 padding: "14px 44px",
                                 borderRadius: 12,
