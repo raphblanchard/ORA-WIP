@@ -1,7 +1,7 @@
 export const config = { runtime: "edge" };
 
 const GITHUB_VIDEO_URL =
-    "https://github.com/raphblanchard/ORA-WIP/releases/download/v1.0-media/Test.VR.4K.mp4";
+    "https://github.com/raphblanchard/ORA-WIP/releases/download/v1.0-media/ORA.VR.4K.mp4";
 
 export default async function handler(req: Request) {
     // Preflight CORS
