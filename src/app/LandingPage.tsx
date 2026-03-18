@@ -240,6 +240,12 @@ const canvasBlur = useTransform(scrollYProgress, [0.53, 0.65], [0, 20]);
               </div>
               Lancer l&apos;expérience VR
             </Link>
+            <Link
+              to="/prototype"
+              className="mt-4 rounded-full border border-white/40 bg-black/25 px-10 py-4 text-base font-semibold text-white backdrop-blur-sm transition-all duration-300 hover:scale-105 hover:bg-black/35 md:text-lg"
+            >
+              Tester le prototype
+            </Link>
           </motion.div>
         </div>
       </div>
