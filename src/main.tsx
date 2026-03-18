@@ -4,6 +4,7 @@ import { BrowserRouter, Routes, Route, useLocation } from "react-router";
 import { AnimatePresence, motion } from "motion/react";
 import App from "./app/App.tsx";
 import LandingPage from "./app/LandingPage.tsx";
+import PrototypePage from "./app/prototype/PrototypePage.tsx";
 import "aframe";
 import "./styles/index.css";
 
@@ -23,6 +24,7 @@ function AnimatedRoutes() {
         <Routes location={location}>
           <Route path="/" element={<LandingPage />} />
           <Route path="/vr" element={<App />} />
+          <Route path="/prototype" element={<PrototypePage />} />
         </Routes>
       </motion.div>
     </AnimatePresence>
