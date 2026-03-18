@@ -5,7 +5,7 @@ import React, { useEffect, useRef, useState } from "react";
    PROPS
 ───────────────────────────────────────────── */
 interface VrHudAframeProps {
-    alertType: "breathing" | "return";
+    alertMode: "none" | "breathing" | "return";
     altitude: string;
     bpm: string;
     durationText: string;
@@ -22,7 +22,7 @@ interface VrHudAframeProps {
    attachées à la caméra → visible en mode immersif VR
 ───────────────────────────────────────────── */
 export default function VrHudAframe({
-    alertType,
+    alertMode,
     altitude,
     bpm,
     durationText,
@@ -48,8 +48,7 @@ export default function VrHudAframe({
     const COL = "#6AD2CA";
     const breathInstruction = breathPhase === "inhale" ? "Inspirez lentement" : "Expirez";
 
-    /* ── lecture vidéo ── */
-    /* Retrouve le <video id="bg-video-af"> injecté par VideoPreloader et le joue */
+    /* ── lecture vidéo initiale (descente) ── */
     useEffect(() => {
         const v = document.getElementById("bg-video-af") as HTMLVideoElement | null;
         if (!v) return;
@@ -58,6 +57,26 @@ export default function VrHudAframe({
             .then(() => setIsPlaying(true))
             .catch(() => setIsPlaying(false));
     }, []);
+
+    /* ── switch vidéosphère selon la scène ── */
+    useEffect(() => {
+        const vsDescente  = document.querySelector("#af-vs-descente");
+        const vsAscension = document.querySelector("#af-vs-ascension");
+        const vidDescente  = document.getElementById("bg-video-af")        as HTMLVideoElement | null;
+        const vidAscension = document.getElementById("bg-video-ascension") as HTMLVideoElement | null;
+
+        if (isFirstReference) {
+            vsDescente?.setAttribute("visible",  "true");
+            vsAscension?.setAttribute("visible", "false");
+            vidDescente?.play().catch(() => {});
+            vidAscension?.pause();
+        } else {
+            vsDescente?.setAttribute("visible",  "false");
+            vsAscension?.setAttribute("visible", "true");
+            vidAscension?.play().catch(() => {});
+            vidDescente?.pause();
+        }
+    }, [isFirstReference]);
 
     /* ── mise à jour dynamique des <a-text> par setAttribute ── */
     useEffect(() => {
@@ -85,59 +104,92 @@ export default function VrHudAframe({
         if (el) el.setAttribute("value", `${tempAmb}°C`);
     }, [tempAmb]);
 
-    /* ── animation d'apparition des lignes ── */
+    /* ── animation d'ouverture : montage initial + chaque changement de scène ── */
     useEffect(() => {
-        // Petit délai pour laisser A-Frame s'initialiser
-        const timer = setTimeout(() => {
-            const lineL = document.querySelector("#af-line-left");
-            const lineR = document.querySelector("#af-line-right");
+        const STAT_SELS = [
+            "#af-stat-time",
+            "#af-stat-altitude",
+            "#af-stat-duration",
+            "#af-stat-bpm",
+            "#af-stat-temp",
+            "#af-stat-meteo",
+        ];
 
+        const lineL = document.querySelector("#af-line-left");
+        const lineR = document.querySelector("#af-line-right");
+
+        /* 1. Reset instantané */
+        if (lineL) {
+            lineL.removeAttribute("animation");
+            lineL.removeAttribute("animation__scale");
+            lineL.removeAttribute("animation__pos");
+            lineL.setAttribute("material", "shader: flat; transparent: true; opacity: 0");
+            lineL.setAttribute("scale", "0.04 1 1");
+            lineL.setAttribute("position", "-0.3 0.05 0"); // part du centre
+        }
+        if (lineR) {
+            lineR.removeAttribute("animation");
+            lineR.removeAttribute("animation__scale");
+            lineR.removeAttribute("animation__pos");
+            lineR.setAttribute("material", "shader: flat; transparent: true; opacity: 0");
+            lineR.setAttribute("scale", "0.04 1 1");
+            lineR.setAttribute("position", "0.3 0.05 0"); // part du centre
+        }
+        STAT_SELS.forEach(sel => {
+            const el = document.querySelector(sel);
+            if (el) {
+                el.removeAttribute("animation");
+                el.removeAttribute("animation__pulse");
+                el.setAttribute("scale", "0 0 0");
+            }
+        });
+
+        /* 2. Animation après délai */
+        const timer = setTimeout(() => {
+            /* Lignes : se déploient depuis le logo vers l'extérieur */
             if (lineL) {
                 lineL.setAttribute("animation", {
-                    property: "material.opacity",
-                    from: 0,
-                    to: 1,
-                    dur: 900,
-                    easing: "easeInOutQuad",
+                    property: "material.opacity", from: 0, to: 1,
+                    dur: 700, easing: "easeOutQuad",
+                });
+                lineL.setAttribute("animation__scale", {
+                    property: "scale", from: "0.04 1 1", to: "1 1 1",
+                    dur: 950, easing: "easeOutCubic",
+                });
+                lineL.setAttribute("animation__pos", {
+                    property: "position", from: "-0.3 0.05 0", to: "-1.5 0.05 0",
+                    dur: 950, easing: "easeOutCubic",
                 });
             }
             if (lineR) {
                 lineR.setAttribute("animation", {
-                    property: "material.opacity",
-                    from: 0,
-                    to: 1,
-                    dur: 900,
-                    delay: 100,
-                    easing: "easeInOutQuad",
+                    property: "material.opacity", from: 0, to: 1,
+                    dur: 700, delay: 60, easing: "easeOutQuad",
+                });
+                lineR.setAttribute("animation__scale", {
+                    property: "scale", from: "0.04 1 1", to: "1 1 1",
+                    dur: 950, delay: 60, easing: "easeOutCubic",
+                });
+                lineR.setAttribute("animation__pos", {
+                    property: "position", from: "0.3 0.05 0", to: "1.5 0.05 0",
+                    dur: 950, delay: 60, easing: "easeOutCubic",
                 });
             }
 
-            // Apparition échelonnée des stats
-            const stats = [
-                "#af-stat-time",
-                "#af-stat-altitude",
-                "#af-stat-duration",
-                "#af-stat-bpm",
-                "#af-stat-temp",
-                "#af-stat-meteo",
-            ];
-            stats.forEach((sel, i) => {
+            /* Stats : pop-in échelonné (scale propage aux enfants a-image + a-text) */
+            STAT_SELS.forEach((sel, i) => {
                 const el = document.querySelector(sel);
                 if (el) {
                     el.setAttribute("animation", {
-                        property: "material.opacity",
-                        from: 0,
-                        to: 1,
-                        dur: 500,
-                        delay: 400 + i * 150,
-                        easing: "easeInOutQuad",
+                        property: "scale", from: "0 0 0", to: "1 1 1",
+                        dur: 380, delay: 450 + i * 120, easing: "easeOutBack",
                     });
                 }
             });
         }, 300);
 
         return () => clearTimeout(timer);
-    }, []);
+    }, [isFirstReference]);
 
     /* ── pulsation logo ── */
     useEffect(() => {
@@ -196,51 +248,112 @@ export default function VrHudAframe({
     }, []);
 
     useEffect(() => {
-        setActiveAlert("none");
-        setBreathPhase("inhale");
-        setLogoSrc("/media/hud/png-elements/hq/Logo vert.png");
         let breathingTimer: number | null = null;
 
-        const triggerTimer = window.setTimeout(() => {
-            if (alertType === "breathing") {
-                setLogoSrc("/media/hud/png-elements/hq/Logo jaune.png");
-                setActiveAlert("breathing");
-                const totalCycles = 5;
-                let completedCycles = 0;
+        if (alertMode === "none") {
+            setActiveAlert("none");
+            setBreathPhase("inhale");
+            setLogoSrc("/media/hud/png-elements/hq/Logo vert.png");
+            return;
+        }
 
-                const runBreathingPhase = (phase: "inhale" | "exhale") => {
-                    setBreathPhase(phase);
-                    breathingTimer = window.setTimeout(() => {
-                        if (phase === "inhale") {
-                            runBreathingPhase("exhale");
-                            return;
-                        }
+        if (alertMode === "breathing") {
+            setLogoSrc("/media/hud/png-elements/hq/Logo jaune.png");
+            setActiveAlert("breathing");
+            setBreathPhase("inhale");
 
-                        completedCycles += 1;
-                        if (completedCycles >= totalCycles) {
-                            setActiveAlert("none");
-                            return;
-                        }
+            const totalCycles = 5;
+            let completedCycles = 0;
 
-                        runBreathingPhase("inhale");
-                    }, phase === "inhale" ? BREATH_INHALE_MS : BREATH_EXHALE_MS);
-                };
+            const runBreathingPhase = (phase: "inhale" | "exhale") => {
+                setBreathPhase(phase);
+                breathingTimer = window.setTimeout(() => {
+                    if (phase === "inhale") {
+                        runBreathingPhase("exhale");
+                        return;
+                    }
+                    completedCycles += 1;
+                    if (completedCycles >= totalCycles) {
+                        setActiveAlert("none");
+                        return;
+                    }
+                    runBreathingPhase("inhale");
+                }, phase === "inhale" ? BREATH_INHALE_MS : BREATH_EXHALE_MS);
+            };
 
-                runBreathingPhase("inhale");
-            }
-            else {
-                setLogoSrc("/media/hud/png-elements/hq/Logo rouge.png");
-                setActiveAlert("return");
-            }
-        }, 10000);
+            runBreathingPhase("inhale");
+        }
+
+        if (alertMode === "return") {
+            setLogoSrc("/media/hud/png-elements/hq/Logo rouge.png");
+            setActiveAlert("return");
+        }
 
         return () => {
-            window.clearTimeout(triggerTimer);
-            if (breathingTimer !== null) {
-                window.clearInterval(breathingTimer);
-            }
+            if (breathingTimer !== null) window.clearTimeout(breathingTimer);
         };
-    }, [alertType]);
+    }, [alertMode]);
+
+    /* ── mise en évidence alerte : rouge + pulse sur la stat responsable ── */
+    useEffect(() => {
+        if (activeAlert === "none") {
+            const bpmText = document.querySelector("#af-bpm");
+            if (bpmText) bpmText.setAttribute("color", COL);
+            const altText = document.querySelector("#af-altitude");
+            if (altText) altText.setAttribute("color", COL);
+            const durText = document.querySelector("#af-duration");
+            if (durText) durText.setAttribute("color", COL);
+
+            ["#af-stat-bpm", "#af-stat-altitude", "#af-stat-duration"].forEach(sel => {
+                const el = document.querySelector(sel);
+                if (!el) return;
+                el.removeAttribute("animation__pulse");
+                el.setAttribute("scale", "1 1 1");
+            });
+            return;
+        }
+
+        const textId = activeAlert === "breathing" ? "#af-bpm" : "#af-altitude";
+        const statId = activeAlert === "breathing" ? "#af-stat-bpm" : "#af-stat-altitude";
+
+        setTimeout(() => {
+            const textEl = document.querySelector(textId);
+            const alertColor = activeAlert === "breathing" ? "#F7D716" : "#FF3B30";
+            if (textEl) textEl.setAttribute("color", alertColor);
+
+            // Pour l'alerte retour : durée aussi en rouge + pulse
+            if (activeAlert === "return") {
+                const durText = document.querySelector("#af-duration");
+                if (durText) durText.setAttribute("color", "#FF3B30");
+
+                const durStat = document.querySelector("#af-stat-duration");
+                if (durStat) {
+                    durStat.setAttribute("animation__pulse", {
+                        property: "scale",
+                        from: "1 1 1",
+                        to: "1.15 1.15 1.15",
+                        dur: 750,
+                        dir: "alternate",
+                        loop: true,
+                        easing: "easeInOutSine",
+                    });
+                }
+            }
+
+            const statEl = document.querySelector(statId);
+            if (statEl) {
+                statEl.setAttribute("animation__pulse", {
+                    property: "scale",
+                    from: "1 1 1",
+                    to: "1.15 1.15 1.15",
+                    dur: 750,
+                    dir: "alternate",
+                    loop: true,
+                    easing: "easeInOutSine",
+                });
+            }
+        }, 350);
+    }, [activeAlert]);
 
     useEffect(() => {
         const buttonEl = document.querySelector("#af-nav-button");
@@ -372,8 +485,9 @@ export default function VrHudAframe({
                     <img id="af-img-nuit" src="/media/hud/png-elements/hq/Nuit.png" crossOrigin="anonymous" />
                 </a-assets>
 
-                {/* ── Vidéo 360° ── */}
-                <a-videosphere src="#bg-video-af" rotation="0 -90 0" />
+                {/* ── Vidéos 360° — une par scène ── */}
+                <a-videosphere id="af-vs-descente"  src="#bg-video-af"        rotation="0 -90 0" />
+                <a-videosphere id="af-vs-ascension" src="#bg-video-ascension"  rotation="0 -90 0" visible="false" />
 
                 {/* ── Caméra + HUD enfant ── */}
                 <a-entity id="af-camera-rig" rotation={`0 ${INITIAL_CAMERA_YAW} 0`}>
@@ -438,8 +552,8 @@ export default function VrHudAframe({
                                 src="#af-img-heure"
                                 material="shader: flat; transparent: true"
                                 position="-0.15 0 0"
-                                width="0.10"
-                                height="0.10"
+                                width="0.11"
+                                height="0.11"
                             />
                             <a-text
                                 id="af-time"
@@ -459,8 +573,8 @@ export default function VrHudAframe({
                                 src="#af-img-alti"
                                 material="shader: flat; transparent: true"
                                 position="-0.20 0 0"
-                                width="0.08"
-                                height="0.12"
+                                width="0.10"
+                                height="0.10"
                             />
                             <a-text
                                 id="af-altitude"
@@ -468,22 +582,23 @@ export default function VrHudAframe({
                                 position="-0.10 0 0"
                                 color={COL}
                                 font="kelsonsans"
-                                width="4.0"
+                                width="3.5"
                                 align="left"
                                 baseline="center"
                             />
                         </a-entity>
 
                         {/* Durée / nuit — bas gauche */}
-                        <a-entity id="af-stat-duration" material="opacity: 0" position="-2.50 -0.30 0.01">
+                        <a-entity id="af-stat-duration" material="opacity: 0" position="-2.50 -0.55 0.01">
                             <a-image
                                 src="#af-img-nuit"
                                 material="shader: flat; transparent: true"
                                 position="-0.15 0 0"
-                                width="0.12"
-                                height="0.12"
+                                width="0.11"
+                                height="0.11"
                             />
                             <a-text
+                                id="af-duration"
                                 value={durationText}
                                 position="-0.05 0 0"
                                 color={COL}
@@ -504,8 +619,8 @@ export default function VrHudAframe({
                                 src="#af-img-bpm"
                                 material="shader: flat; transparent: true"
                                 position="0 0 0"
-                                width="0.12"
-                                height="0.10"
+                                width="0.11"
+                                height="0.11"
                             />
                             <a-text
                                 id="af-bpm"
@@ -525,13 +640,13 @@ export default function VrHudAframe({
                                 src="#af-img-temp"
                                 material="shader: flat; transparent: true"
                                 position="0 0 0"
-                                width="0.06"
-                                height="0.14"
+                                width="0.11"
+                                height="0.11"
                             />
                             <a-text
                                 id="af-temp-obj"
                                 value={`${tempObj}°C`}
-                                position="0.08 0 0"
+                                position="0.10 0 0"
                                 color={COL}
                                 font="kelsonsans"
                                 width="3.5"
@@ -541,18 +656,18 @@ export default function VrHudAframe({
                         </a-entity>
 
                         {/* Temp extérieure / météo — bas droite */}
-                        <a-entity id="af-stat-meteo" material="opacity: 0" position="2.50 -0.30 0.01">
+                        <a-entity id="af-stat-meteo" material="opacity: 0" position="2.50 -0.55 0.01">
                             <a-image
                                 src="#af-img-meteo"
                                 material="shader: flat; transparent: true"
                                 position="0 0 0"
-                                width="0.14"
-                                height="0.10"
+                                width="0.11"
+                                height="0.11"
                             />
                             <a-text
                                 id="af-temp-amb"
                                 value={`${tempAmb}°C`}
-                                position="0.12 0 0"
+                                position="0.10 0 0"
                                 color={COL}
                                 font="kelsonsans"
                                 width="3.5"
@@ -600,72 +715,73 @@ export default function VrHudAframe({
                         )}
 
                         {activeAlert === "breathing" && (
-                            <a-entity id="af-breathing-alert" position="0 -0.05 0.03">
-                                <a-circle
-                                    radius="0.27"
-                                    material="shader: flat; color: #F3D35B; opacity: 0.08"
+                            <a-entity id="af-breathing-alert">
+                                {/* Label — juste au-dessus du BPM (x=0.50, y=0.20) */}
+                                <a-text
+                                    value="BPM CRITIQUE"
+                                    color="#F7D716"
+                                    align="left"
+                                    width="2.2"
+                                    position="0.42 0.36 0.03"
                                 />
-                                <a-ring
-                                    radius-inner="0.19"
-                                    radius-outer="0.205"
-                                    theta-start="-54"
-                                    theta-length="144"
-                                    material="shader: flat; color: #63D471; opacity: 0.95"
-                                />
-                                <a-ring
-                                    radius-inner="0.19"
-                                    radius-outer="0.205"
-                                    theta-start="90"
-                                    theta-length="216"
-                                    material="shader: flat; color: #5DADE2; opacity: 0.95"
-                                />
-                                <a-entity
-                                    animation={`property: rotation; from: 0 0 0; to: 0 0 -360; dur: ${BREATH_CYCLE_MS}; loop: true; easing: linear`}
-                                >
-                                    <a-box
-                                        width="0.012"
-                                        height="0.22"
-                                        depth="0.01"
-                                        position="0 0.11 0.01"
+                                {/* Guide respiration — en bas centre */}
+                                <a-entity position="0 -0.50 0.03">
+                                    <a-ring
+                                        radius-inner="0.14"
+                                        radius-outer="0.152"
+                                        theta-start="-54"
+                                        theta-length="144"
+                                        material="shader: flat; color: #63D471; opacity: 0.9"
+                                    />
+                                    <a-ring
+                                        radius-inner="0.14"
+                                        radius-outer="0.152"
+                                        theta-start="90"
+                                        theta-length="216"
+                                        material="shader: flat; color: #5DADE2; opacity: 0.9"
+                                    />
+                                    <a-entity
+                                        animation={`property: rotation; from: 0 0 0; to: 0 0 -360; dur: ${BREATH_CYCLE_MS}; loop: true; easing: linear`}
+                                    >
+                                        <a-box
+                                            width="0.009"
+                                            height="0.16"
+                                            depth="0.01"
+                                            position="0 0.08 0.01"
+                                            material="shader: flat; color: #FFF7DA; opacity: 0.95"
+                                        />
+                                    </a-entity>
+                                    <a-circle
+                                        radius="0.016"
                                         material="shader: flat; color: #FFF7DA; opacity: 0.95"
                                     />
+                                    <a-text
+                                        value={breathInstruction}
+                                        color="#FFF7DA"
+                                        align="center"
+                                        width="2.0"
+                                        position="0 -0.24 0.01"
+                                    />
                                 </a-entity>
-                                <a-circle
-                                    radius="0.022"
-                                    material="shader: flat; color: #FFF7DA; opacity: 0.95"
-                                />
-                                <a-text
-                                    value="Alerte respiration"
-                                    color="#F9E7A5"
-                                    align="center"
-                                    width="2.2"
-                                    position="0 -0.42 0.01"
-                                />
-                                <a-text
-                                    value={breathInstruction}
-                                    color="#FFF7DA"
-                                    align="center"
-                                    width="2.6"
-                                    position="0 -0.53 0.01"
-                                />
                             </a-entity>
                         )}
 
                         {activeAlert === "return" && (
-                            <a-entity id="af-return-alert" position="0 -0.1 0.03">
+                            <a-entity id="af-return-alert">
+                                {/* Label — juste au-dessus de l'altitude (x=-1.50, y=-0.10) */}
                                 <a-text
-                                    value="Alerte retour"
-                                    color="#FF8A84"
-                                    align="center"
-                                    width="2.3"
-                                    position="0 0.1 0.02"
+                                    value="ALTITUDE CRITIQUE"
+                                    color="#FF3B30"
+                                    align="left"
+                                    width="2.2"
+                                    position="-1.60 0.06 0.03"
                                 />
                                 <a-text
-                                    value="Rentrez."
-                                    color="#FFF1F1"
+                                    value="Rentrez avant la nuit."
+                                    color="rgba(255,241,241,0.7)"
                                     align="center"
                                     width="2.4"
-                                    position="0 -0.02 0.02"
+                                    position="0 -0.50 0.03"
                                 />
                             </a-entity>
                         )}

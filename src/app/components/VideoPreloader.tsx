@@ -2,30 +2,41 @@ import { useEffect, useRef, useState } from "react";
 
 interface VideoPreloaderProps {
     videoUrl: string;
+    secondaryVideoUrl?: string;
     onStart: () => void;
 }
 
 const COL = "#6AD2CA";
 
-export default function VideoPreloader({ videoUrl, onStart }: VideoPreloaderProps) {
+function createVideoEl(id: string, src: string) {
+    const v = document.createElement("video");
+    v.id = id;
+    v.src = src;
+    v.preload = "auto";
+    v.loop = false; // géré manuellement pour détecter la fin et reset la simulation
+    v.muted = true;
+    v.playsInline = true;
+    v.crossOrigin = "anonymous";
+    v.style.display = "none";
+    document.body.appendChild(v);
+    return v;
+}
+
+export default function VideoPreloader({ videoUrl, secondaryVideoUrl, onStart }: VideoPreloaderProps) {
     const [progress, setProgress] = useState(0);
     const [ready, setReady] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const handedOff = useRef(false);
 
     useEffect(() => {
-        // Crée le <video id="bg-video-af"> directement dans le DOM
-        // VrHudAframe le retrouvera par ID sans re-télécharger
-        const video = document.createElement("video");
-        video.id = "bg-video-af";
-        video.src = videoUrl;
-        video.preload = "auto";
-        video.loop = true;
-        video.muted = true;
-        video.playsInline = true;
-        video.crossOrigin = "anonymous";
-        video.style.display = "none";
-        document.body.appendChild(video);
+        /* ── Vidéo primaire (descente / ski) — barre de progression ── */
+        const video = createVideoEl("bg-video-af", videoUrl);
+
+        /* ── Vidéo secondaire (ascension / montagne) — chargement silencieux ── */
+        const videoSecondary = secondaryVideoUrl
+            ? createVideoEl("bg-video-ascension", secondaryVideoUrl)
+            : null;
+        if (videoSecondary) videoSecondary.load();
 
         let rafId: number;
 
@@ -60,13 +71,16 @@ export default function VideoPreloader({ videoUrl, onStart }: VideoPreloaderProp
             cancelAnimationFrame(rafId);
             video.removeEventListener("canplaythrough", onCanPlayThrough);
             video.removeEventListener("error", onError);
-            // Ne pas supprimer l'élément s'il a déjà été passé à VrHudAframe
             if (!handedOff.current) {
                 video.src = "";
                 document.body.removeChild(video);
+                if (videoSecondary) {
+                    videoSecondary.src = "";
+                    document.body.removeChild(videoSecondary);
+                }
             }
         };
-    }, [videoUrl]);
+    }, [videoUrl, secondaryVideoUrl]);
 
     function handleStart() {
         handedOff.current = true;
